@@ -287,7 +287,27 @@ class Mommy(object):
             return self.generate_value(field)
 
     def instance(self, attrs, _commit):
-        instance = self.model(**attrs)
+        # this instance might have already been created by a post_save hook
+        # from a related field or some other (OneToOneField key) related model,
+        # if we generate a new instance, a unique key error might be raised if
+        # any attr in attrs is a unique field.
+        # TODO: might need to fix this for unique date_checks as well.
+        instance = None
+        unique_checks, date_checks = self.model()._get_unique_checks()
+        # iterate through the unique fields combinations and try to retrieve a
+        # model instance (it might have been create by a post_save hook or some
+        # other type of hook)
+        for model, unique_attrs in unique_checks:
+            if model == self.model:
+                attrs_ = dict((attr, attrs[attr])
+                              for attr in unique_attrs if attr in attrs)
+                if len(attrs_.keys()):
+                    try:
+                        instance = self.model.objects.get(**attrs_)
+                    except (self.model.DoesNotExist,
+                            self.model.MultipleObjectsReturned):
+                        pass
+        instance = instance or self.model(**attrs)
         # m2m only works for persisted instances
         if _commit:
             instance.save()

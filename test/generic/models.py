@@ -8,6 +8,7 @@ from decimal import Decimal
 from tempfile import gettempdir
 
 from django.db import models
+from django.db.models.signals import post_save
 from django.core.files.storage import FileSystemStorage
 
 from django.contrib.contenttypes.models import ContentType
@@ -68,6 +69,10 @@ class Dog(models.Model):
 
 class LonelyPerson(models.Model):
     only_friend = models.OneToOneField(Person)
+
+
+class LonelyPersonWithPostSaveHook(models.Model):
+    only_friend = models.OneToOneField(User)
 
 
 class Store(models.Model):
@@ -192,3 +197,13 @@ class CustomFieldWithoutGeneratorModel(models.Model):
 
 class DummyUniqueIntegerFieldModel(models.Model):
     value = models.IntegerField(unique=True)
+
+
+def lonely_user_with_post_save_hook(sender, instance, created, **kwargs):
+    """Create a person when a new user account is created"""
+    if created:
+        lp = LonelyPersonWithPostSaveHook()
+        lp.only_friend = instance
+        lp.save()
+
+post_save.connect(lonely_user_with_post_save_hook, sender=User)

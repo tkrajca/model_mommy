@@ -10,7 +10,9 @@ from mock import patch, Mock
 from model_mommy import mommy
 from model_mommy.exceptions import ModelNotFound, AmbiguousModelName, InvalidQuantityException
 from model_mommy.timezone import smart_datetime as datetime
-from test.generic.models import Person, Dog, Store, LonelyPerson, School, SchoolEnrollment, ModelWithImpostorField
+from test.generic.models import (Person, Dog, Store, LonelyPerson, School,
+                                 SchoolEnrollment, ModelWithImpostorField,
+                                 LonelyPersonWithPostSaveHook)
 from test.generic.models import User, PaymentBill
 from test.generic.models import UnsupportedModel, DummyGenericRelationModel
 from test.generic.models import DummyNullFieldsModel, DummyBlankFieldsModel
@@ -174,6 +176,13 @@ class MommyCreatesAssociatedModels(TestCase):
         self.assertEquals(LonelyPerson.objects.all().count(), 1)
         self.assertTrue(isinstance(lonely_person.only_friend, Person))
         self.assertEquals(Person.objects.all().count(), 1)
+
+    def test_create_with_post_save_hook(self):
+        lonely_person = mommy.make(LonelyPersonWithPostSaveHook)
+
+        self.assertEquals(LonelyPersonWithPostSaveHook.objects.count(), 1)
+        self.assertTrue(isinstance(lonely_person.only_friend, User))
+        self.assertEquals(User.objects.count(), 1)
 
     def test_create_many_to_many_if_flagged(self):
         store = mommy.make(Store, make_m2m=True)
