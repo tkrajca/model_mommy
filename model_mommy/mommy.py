@@ -59,15 +59,26 @@ foreign_key_required = [lambda field: ('model', field.related.parent_model)]
 
 MAX_MANY_QUANTITY = 5
 
+
 def make(model, _quantity=None, make_m2m=False, **attrs):
     """
     Creates a persisted instance from a given model its associated models.
     It fill the fields with random values or you can specify
     which fields you want to define its values by yourself.
     """
-    mommy = Mommy(model, make_m2m=make_m2m)
     if _quantity and (not isinstance(_quantity, int) or _quantity < 1):
         raise InvalidQuantityException
+
+    # we cannot simply call recipe.make() because it calls make() so we would
+    # get recursion error
+    # TODO: there might be a better way to do this
+    recipes_from_settings = getattr(settings, 'MOMMY_CUSTOM_RECIPES', {})
+    model_name = get_model_name(model)
+    if model_name in recipes_from_settings:
+        recipe = _recipe(recipes_from_settings[model_name])
+        attrs = recipe._mapping(attrs)
+
+    mommy = Mommy(model, make_m2m=make_m2m)
 
     if _quantity:
         return [mommy.make(**attrs) for i in range(_quantity)]
@@ -82,9 +93,16 @@ def prepare(model, _quantity=None, **attrs):
     It fill the fields with random values or you can specify
     which fields you want to define its values by yourself.
     """
-    mommy = Mommy(model)
     if _quantity and (not isinstance(_quantity, int) or _quantity < 1):
         raise InvalidQuantityException
+
+    recipes_from_settings = getattr(settings, 'MOMMY_CUSTOM_RECIPES', {})
+    model_name = get_model_name(model)
+    if model_name in recipes_from_settings:
+        recipe = _recipe(recipes_from_settings[model_name])
+        attrs = recipe._mapping(attrs)
+
+    mommy = Mommy(model)
 
     if _quantity:
         return [mommy.prepare(**attrs) for i in range(_quantity)]
@@ -388,6 +406,14 @@ def filter_rel_attrs(field_name, **rel_attrs):
             clean_dict[k] = v
 
     return clean_dict
+
+
+def get_model_name(model):
+    """Extract model name from either a model class or (import) path."""
+    if isinstance(model, ModelBase):
+        return model().__class__.__name__
+    else:
+        return model.split('.')[-1]
 
 
 ### DEPRECATED METHODS (should be removed on the future)

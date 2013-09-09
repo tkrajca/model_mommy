@@ -27,7 +27,7 @@ from six import text_type
 
 from model_mommy import mommy
 from test.generic.models import has_pil
-from test.generic.models import Person
+from test.generic.models import Person, Dog
 from test.generic.models import DummyIntModel, DummyPositiveIntModel
 from test.generic.models import DummyNumbersModel
 from test.generic.models import DummyDecimalModel, DummyEmailModel
@@ -42,6 +42,7 @@ __all__ = [
     'FillingOthersNumericFields', 'FillingFromChoice', 'URLFieldsFilling',
     'FillingEmailField', 'FillingGenericForeignKeyField', 'FillingFileField',
     'FillingImageFileField', 'TimeFieldsFilling', 'FillingCustomFields',
+    'FillingCustomRecipes',
 ]
 
 
@@ -254,7 +255,7 @@ class FillingImageFileField(TestCase):
             self.assertIsInstance(field, ImageField)
             import time
             path = "%s/%s/mock-img.jpeg" % (gettempdir(), time.strftime('%Y/%m/%d'))
-    
+
             from django import VERSION
             if VERSION[1] >= 4:
                 # These require the file to exist in earlier versions of Django
@@ -281,3 +282,28 @@ class FillingCustomFields(TestCase):
     def test_uses_generator_defined_on_settings_for_custom_field(self):
         obj = mommy.make(CustomFieldWithGeneratorModel)
         self.assertEqual("value", obj.custom_value)
+
+
+class FillingCustomRecipes(TestCase):
+    def setUp(self):
+        MOMMY_CUSTOM_RECIPES = {'Dog': 'test.generic.dog',
+                                'Person': 'test.generic.person'}
+        setattr(settings, 'MOMMY_CUSTOM_RECIPES', MOMMY_CUSTOM_RECIPES)
+
+    def tearDown(self):
+        delattr(settings, 'MOMMY_CUSTOM_RECIPES')
+
+    def test_uses_recipe_defined_on_settings(self):
+        dog = mommy.make(Dog)
+        self.assertEqual(dog.breed, 'Pug')
+        self.assertEqual(dog.owner.name, 'John Doe')
+        self.assertEqual(dog.owner.nickname, 'joe')
+        self.assertEqual(dog.owner.age, 18)
+        self.assertEqual(dog.owner.bio, 'Someone in the crowd')
+
+        dog = mommy.prepare(Dog)
+        self.assertEqual(dog.breed, 'Pug')
+        self.assertEqual(dog.owner.name, 'John Doe')
+        self.assertEqual(dog.owner.nickname, 'joe')
+        self.assertEqual(dog.owner.age, 18)
+        self.assertEqual(dog.owner.bio, 'Someone in the crowd')

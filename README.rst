@@ -367,6 +367,19 @@ Passing values when calling `make_recipe` or `prepare_recipe` will override the 
 This is useful when you have to create multiple objects and you have some unique field, for instance.
 
 
+Custom recipes to models
+------------------------
+
+Model-mommy allows you to define custom mapping between recipes and models. If you define a recipe for a model, that model then will be created from the specified recipe instead of being generated from random values. This can be achieved by specifing a dict on settings that its keys are the model name and the values are their recipes, as the example bellow:
+
+.. code-block:: python
+
+    # on your settings.py file:
+    MOMMY_CUSTOM_RECIPES = {
+        'Person': 'myapp.person',
+    }
+
+
 Deprecation Warnings
 ====================
 
